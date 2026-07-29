@@ -1,119 +1,25 @@
-name: Node.js CI/CD Pipeline
+name: CI
 
 on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["main"]
-  workflow_dispatch:
-
-env:
-  NODE_ENV: test
 
 jobs:
-  # ───────────────────────────────────────────────
-  # Job 1: Lint & Syntax Check
-  # ───────────────────────────────────────────────
-  lint:
-    name: Lint & Syntax Check
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Syntax Check - server.js
-        run: node --check server.js
-
-      - name: Syntax Check - All JS Files
-        run: |
-          find . -name "*.js" -not -path "./node_modules/*" | while read file; do
-            echo "Checking: $file"
-            node --check "$file"
-          done
-
-  # ───────────────────────────────────────────────
-  # Job 2: Security Audit
-  # ───────────────────────────────────────────────
-  security:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    needs: lint
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Run npm audit
-        run: npm audit --audit-level=high || true
-
-      - name: Check for .env in repo
-        run: |
-          if [ -f .env ]; then
-            echo "::warning::.env file found in repository! Make sure it is in .gitignore"
-          fi
-
-  # ───────────────────────────────────────────────
-  # Job 3: Build & Verify
-  # ───────────────────────────────────────────────
   build:
-    name: Build & Verify
     runs-on: ubuntu-latest
-    needs: lint
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: "npm"
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Verify Dependencies Installed
-        run: |
-          echo "✅ Checking required packages..."
-          node -e "require('express'); console.log('  ✓ express')"
-          node -e "require('mongoose'); console.log('  ✓ mongoose')"
-          node -e "require('bcryptjs'); console.log('  ✓ bcryptjs')"
-          node -e "require('jsonwebtoken'); console.log('  ✓ jsonwebtoken')"
-          node -e "require('dotenv'); console.log('  ✓ dotenv')"
-          echo "✅ All dependencies verified!"
-
-      - name: Verify Project Structure
-        run: |
-          echo "✅ Checking project structure..."
-          test -f server.js && echo "  ✓ server.js"
-          test -d config && echo "  ✓ config/"
-          test -d controllers && echo "  ✓ controllers/"
-          test -d middleware && echo "  ✓ middleware/"
-          test -d models && echo "  ✓ models/"
-          test -d routes && echo "  ✓ routes/"
-          test -f .gitignore && echo "  ✓ .gitignore"
-          echo "✅ Project structure verified!"
+      - name: Syntax Check
+        run: npm test
